@@ -1,0 +1,264 @@
+<html>
+  <style>
+    #image_container {
+      border: 1px solid red;
+      display: absolute;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-weight: bold;
+      font-size: 50px;
+      font-family: sans-serif;
+    }
+    #next_container {
+        position:absolute;
+        right: 10px;
+        top:10px;
+        padding: 5px;
+      margin: 10px;
+      height: 100px;
+      font-size: 30px;
+      display:none;
+    }
+    #next {
+        width:500px;
+        height:100px;
+        font-size: 30px;
+    }
+    #correct {
+      color: green;
+    }
+    #incorrect {
+      color: red;
+    }
+    #correct_name {
+      display: 1;
+      position: absolute;
+      top: 800px;
+      width: 100%;
+      text-align: center;
+      font-size: 5em;
+    }
+    #correct_name_link {
+      font-family: sans-serif;
+      color: green;
+    }
+    .button {
+      width: 45%;
+      float: left;
+      padding: 5px;
+      margin: 10px;
+      height: 100px;
+      font-size: 30px;
+    }
+
+    .correct {
+      background: green;
+      color: white;
+    }
+    .incorrect {
+      background: red;
+      color: white;
+    }
+    .reveal {
+      background: blue;
+      color: white;
+    }
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script>
+    actors = []
+    $(document).ready(function () {
+      $.getJSON("actors.json", function (actor_json) {
+        try {
+          actors = actor_json
+          updateScores()
+          showRandomActor(actors)
+        }
+        catch(err) {
+          console.log("got error", err)
+        }
+      })
+      $(".button").click(function (e) {
+        var clicked_id = $(this).attr("rel")
+        checkAnswer(clicked_id)
+      })
+
+      $("#next").click(function (e) {
+        showRandomActor(actors)
+      })
+    })
+
+    function getList(key) {
+      namedSet = window.localStorage.getItem(key)
+      if (namedSet == null) {
+        return new Set()
+      } else {
+        if (typeof namedSet === 'string') {
+          namedSet = JSON.parse(namedSet)
+        }
+        return new Set(namedSet)
+      }
+    }
+
+    function getAnswered() {
+      correct = getList("correct")
+      incorrect = getList("incorrect")
+      return new Set(Array.from(correct).concat(Array.from(incorrect)))
+    }
+
+    function resetAnswered() {
+      window.localStorage.setItem("correct", JSON.stringify([]))
+      window.localStorage.setItem("incorrect", JSON.stringify([]))
+    }
+
+    function addData(name, correct) {
+      listKey = "incorrect"
+      if (correct == true) {
+        listKey = "correct"
+      }
+      answered = getList(listKey)
+      answered.add(name)
+      window.localStorage.setItem(listKey, JSON.stringify(Array.from(answered)))
+    }
+
+    function updateScores() {
+      try {
+        correct = getList("correct")
+        incorrect = getList("incorrect")
+      } catch (err) {
+        resetAnswered()
+        correct = getList("correct")
+        incorrect = getList("incorrect")
+      }
+      $("#correct").html(correct.size)
+      $("#incorrect").html(incorrect.size)
+    }
+    
+
+    function checkAnswer(clicked_id) {
+      button_ids = [1, 2, 3, 4]
+      var correct = false
+      $("#correct_name_link").show()
+      var name = ""
+      for (const button_id of button_ids) {
+        var rel = $("#option" + button_id).attr("rel")
+        if ($("#option" + button_id).attr("correct") == "1") {
+          name = $("#option" + button_id).attr("value")
+          if (rel == clicked_id) {
+            $("#option" + button_id).addClass("correct")
+            correct = true
+          } else {
+            $("#option" + button_id).addClass("reveal")
+          }
+        } else {
+          $("#option" + button_id).addClass("incorrect")
+        }
+      }
+      addData(name, correct)
+      updateScores()
+      showNext()
+    }
+
+    function showNext() {
+        $("#next_container").show()
+    }
+
+    function getRandomActor(actors) {
+      random_actor = Math.floor(Math.random() * 1000)
+      actor = actors[random_actor]
+      return actor
+    }
+
+    function showRandomActor(actors) {
+      $("#next_container").hide()
+      answered = getAnswered()
+      if (answered.size > 999) {
+        resetAnswered()
+      }
+
+      chosen_actors = new Set()
+
+      var correct_actor = getRandomActor(actors)
+      while (answered.has(correct_actor.name)) {
+        correct_actor = getRandomActor(actors)
+      }
+
+      chosen_actors.add(correct_actor)
+
+      $("#correct_name_link").attr("href", correct_actor.link)
+      $("#correct_name_link").html(correct_actor.name)
+      $("#correct_name_link").hide()
+      button_ids = [1, 2, 3, 4]
+      // reset correct attr
+      for (const button_id of button_ids) {
+        $("#option" + button_id).attr("correct", "0")
+        $("#option" + button_id).removeClass("correct")
+        $("#option" + button_id).removeClass("incorrect")
+        $("#option" + button_id).removeClass("reveal")
+      }
+      random_button = Math.floor(Math.random() * 4)
+      correct_button = button_ids[random_button]
+      button_ids.splice(random_button, 1)
+      $("#option" + correct_button).attr("value", correct_actor.name)
+      $("#option" + correct_button).attr("correct", "1")
+
+      for (const button_id of button_ids) {
+        var button_actor = getRandomActor(actors)
+        while (chosen_actors.has(button_actor.name)) {
+          button_actor = getRandomActor(actors)
+        }
+        chosen_actors.add(button_actor.name)
+        $("#option" + button_id).attr("value", button_actor.name)
+      }
+      $("#image").attr("src", correct_actor.image)
+    }
+  </script>
+
+  <div id="image_container">
+    <img id="image" src="" height="80%" width="100%;" />
+    <div id="score">
+      <span id="correct">0</span>/<span id="incorrect">0</span>
+    </div>
+    <div id="next_container"><input id="next" type="button" value="Next"></button></div>
+    <div id="correct_name">
+      <a id="correct_name_link" href="#" target="_blank"></a>
+    </div>
+  </div>
+  <div style="width: 100%">
+    <div>
+      <input
+        id="option1"
+        rel="1"
+        type="button"
+        value="Option 1"
+        class="button"
+      />
+      <input
+        id="option3"
+        rel="3"
+        type="button"
+        value="Option 3"
+        class="button"
+      />
+    </div>
+    <div>
+      <input
+        id="option2"
+        rel="2"
+        type="button"
+        value="Option 2"
+        class="button"
+      />
+      <input
+        id="option4"
+        rel="4"
+        type="button"
+        value="Option 4"
+        class="button"
+      />
+    </div>
+  </div>
+</html>
