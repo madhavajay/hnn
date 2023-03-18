@@ -10,6 +10,16 @@ def index():
     return send_from_directory("./", "index.html")
 
 
+@app.route("/styles.css")
+def styles():
+    return send_from_directory("./", "styles.css")
+
+
+@app.route("/app.js")
+def js():
+    return send_from_directory("./", "app.js")
+
+
 @app.route("/actors.json")
 def about():
     return send_from_directory("./", "actors.json")

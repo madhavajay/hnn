@@ -1,284 +1,24 @@
-<html>
-  <style>
-    #image_container {
-      border: 1px solid red;
-      display: absolute;
-    }
-    #score {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-weight: bold;
-      font-size: 50px;
-      font-family: sans-serif;
-    }
-    #next_container {
-        position:absolute;
-        right: 10px;
-        top:10px;
-        padding: 5px;
-      margin: 10px;
-      height: 100px;
-      font-size: 30px;
-      display:none;
-    }
-    #next {
-        width:500px;
-        height:100px;
-        font-size: 30px;
-    }
-    #correct {
-      color: green;
-    }
-    #incorrect {
-      color: red;
-    }
-    #correct_name {
-      display: 1;
-      position: absolute;
-      top: 800px;
-      width: 100%;
-      text-align: center;
-      font-size: 5em;
-    }
-    #correct_name_link {
-      font-family: sans-serif;
-      color: green;
-    }
-    .button {
-      width: 45%;
-      float: left;
-      padding: 5px;
-      margin: 10px;
-      height: 100px;
-      font-size: 30px;
-    }
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Actor Memorization Game</title>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-    .correct {
-      background: green;
-      color: white;
-    }
-    .incorrect {
-      background: red;
-      color: white;
-    }
-    .reveal {
-      background: blue;
-      color: white;
-    }
-  </style>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-  <script>
-    // Add this function to search IMDB and store the result in local storage
-    async function searchAndStoreIMDB(name) {
-      console.log("search name", name)
-    const apiKey = "010de1bcf60f0e14b92765a3f9485662"; // Replace this with your actual API key
-    const searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(name)}`;
+    <script src="app.js"></script>
 
-    try {
-      const response = await fetch(searchUrl);
-      const data = await response.json();
-      console.log("got data", data)
-      if (data && data.results && data.results.length > 0) {
-        const actor = data.results[0];
-        console.log("got results", actor)
-        const actorData = {
-          name: actor.name,
-          link: `https://www.themoviedb.org/person/${actor.id}`,
-          image: `https://image.tmdb.org/t/p/w500${actor.profile_path}`,
-        };
-
-        let customActors = JSON.parse(window.localStorage.getItem("customActors")) || [];
-        customActors.push(actorData);
-        console.log("customActors", customActors)
-        window.localStorage.setItem("customActors", JSON.stringify(customActors));
-        return true;
-      } else {
-        return false;
-      }
-    } catch (error) {
-      console.error("Error searching TMDb:", error);
-      return false;
-    }
-  }
-  
-    actors = []
-    $(document).ready(function () {
-        // Add this event listener for the "Add" button
-      $("#addCustomName").click(async function () {
-        const name = $("#customName").val();
-        console.log("got name", name)
-        if (name) {
-          const success = await searchAndStoreIMDB(name);
-          if (success) {
-            alert("Custom name added successfully!");
-            $("#customName").val("");
-          } else {
-            alert("No results found. Please try a different name.");
-          }
-        } else {
-          alert("Please enter a name.");
-        }
-      });
-
-      $.getJSON("actors.json", function (actor_json) {
-        try {
-          actors = actor_json
-          let customActors = JSON.parse(window.localStorage.getItem("customActors")) || [];
-          actors = actors.concat(customActors);
-          updateScores()
-          showRandomActor(actors)
-        }
-        catch(err) {
-          console.log("got error", err)
-        }
-      })
-      $(".button").click(function (e) {
-        var clicked_id = $(this).attr("rel")
-        checkAnswer(clicked_id)
-      })
-
-      $("#next").click(function (e) {
-        let customActors = JSON.parse(window.localStorage.getItem("customActors")) || [];
-        actors = actors.concat(customActors);
-        showRandomActor(actors)
-      })
-    })
-
-    function getList(key) {
-      namedSet = window.localStorage.getItem(key)
-      if (namedSet == null) {
-        return new Set()
-      } else {
-        if (typeof namedSet === 'string') {
-          namedSet = JSON.parse(namedSet)
-        }
-        return new Set(namedSet)
-      }
-    }
-
-    function getAnswered() {
-      correct = getList("correct")
-      incorrect = getList("incorrect")
-      return new Set(Array.from(correct).concat(Array.from(incorrect)))
-    }
-
-    function resetAnswered() {
-      window.localStorage.setItem("correct", JSON.stringify([]))
-      window.localStorage.setItem("incorrect", JSON.stringify([]))
-    }
-
-    function addData(name, correct) {
-      listKey = "incorrect"
-      if (correct == true) {
-        listKey = "correct"
-      }
-      answered = getList(listKey)
-      answered.add(name)
-      window.localStorage.setItem(listKey, JSON.stringify(Array.from(answered)))
-    }
-
-    function updateScores() {
-      try {
-        correct = getList("correct")
-        incorrect = getList("incorrect")
-      } catch (err) {
-        resetAnswered()
-        correct = getList("correct")
-        incorrect = getList("incorrect")
-      }
-      $("#correct").html(correct.size)
-      $("#incorrect").html(incorrect.size)
-    }
-    
-
-    function checkAnswer(clicked_id) {
-      button_ids = [1, 2, 3, 4]
-      var correct = false
-      $("#correct_name_link").show()
-      var name = ""
-      for (const button_id of button_ids) {
-        var rel = $("#option" + button_id).attr("rel")
-        if ($("#option" + button_id).attr("correct") == "1") {
-          name = $("#option" + button_id).attr("value")
-          if (rel == clicked_id) {
-            $("#option" + button_id).addClass("correct")
-            correct = true
-          } else {
-            $("#option" + button_id).addClass("reveal")
-          }
-        } else {
-          $("#option" + button_id).addClass("incorrect")
-        }
-      }
-      addData(name, correct)
-      updateScores()
-      showNext()
-    }
-
-    function showNext() {
-        $("#next_container").show()
-    }
-
-    function getRandomActor(actors) {
-      const size = actors.length
-      random_actor = Math.floor(Math.random() * size)
-      actor = actors[random_actor]
-      return actor
-    }
-
-    function showRandomActor(actors) {
-      $("#next_container").hide()
-      var answered = getAnswered()
-
-      if (answered.size >= actors.length) {
-        resetAnswered()
-        answered = getAnswered()
-      }
-
-      chosen_actors = new Set()
-
-      var correct_actor = getRandomActor(actors)
-      while (answered.has(correct_actor.name)) {
-        correct_actor = getRandomActor(actors)
-      }
-
-      $("#correct_name_link").attr("href", correct_actor.link)
-      $("#correct_name_link").html(correct_actor.name)
-      $("#correct_name_link").hide()
-      button_ids = [1, 2, 3, 4]
-      // reset correct attr
-      for (const button_id of button_ids) {
-        $("#option" + button_id).attr("correct", "0")
-        $("#option" + button_id).removeClass("correct")
-        $("#option" + button_id).removeClass("incorrect")
-        $("#option" + button_id).removeClass("reveal")
-      }
-
-      random_button = Math.floor(Math.random() * 4)
-      correct_button = button_ids[random_button]
-      button_ids.splice(random_button, 1)
-      $("#option" + correct_button).attr("value", correct_actor.name)
-      $("#option" + correct_button).attr("correct", "1")
-
-      while(chosen_actors.size < 3) {
-        var button_actor = getRandomActor(actors)
-        if (!chosen_actors.has(button_actor.name) && button_actor.name != correct_actor.name) {
-          chosen_actors.add(button_actor.name)
-        }
-      }
-
-      const actor_array = Array.from(chosen_actors.values())
-      for (const button_id of button_ids) {
-        const index = button_id - 1
-        const actor_name = actor_array.pop()
-        $("#option" + button_id).attr("value", actor_name)
-      }
-      
-      $("#image").attr("src", correct_actor.image)
-    }
-  </script>
-
+  </head>
+  <body>
   <div id="image_container">
     <img id="image" src="" height="80%" width="100%;" />
     <div id="score">
@@ -327,4 +67,5 @@
     <input id="customName" type="text" placeholder="Enter custom name" style="font-size: 24px;"/>
     <input id="addCustomName" type="button" value="Add" style="font-size: 24px;"/>
   </div>
+  </body>
 </html>
