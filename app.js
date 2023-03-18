@@ -1,48 +1,52 @@
 // Add this function to search IMDB and store the result in local storage
-async function searchAndStoreIMDB(name) {
-  console.log("search name", name);
+async function searchAndStoreIMDB(names) {
   const apiKey = "010de1bcf60f0e14b92765a3f9485662"; // Replace this with your actual API key
-  const searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(
-    name
-  )}`;
+  const nameList = names.split(",").map((name) => name.trim());
 
-  try {
-    const response = await fetch(searchUrl);
-    const data = await response.json();
-    console.log("got data", data);
-    if (data && data.results && data.results.length > 0) {
-      const actor = data.results[0];
-      console.log("got results", actor);
-      const actorData = {
-        name: actor.name,
-        link: `https://www.themoviedb.org/person/${actor.id}`,
-        image: `https://image.tmdb.org/t/p/w500${actor.profile_path}`,
-      };
+  var success = true;
+  for (const name of nameList) {
+    const searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(
+      name
+    )}`;
 
-      let customActors =
-        JSON.parse(window.localStorage.getItem("customActors")) || [];
+    try {
+      const response = await fetch(searchUrl);
+      const data = await response.json();
+      console.log("got data", data);
+      if (data && data.results && data.results.length > 0) {
+        const actor = data.results[0];
+        console.log("got results", actor);
+        const actorData = {
+          name: actor.name,
+          link: `https://www.themoviedb.org/person/${actor.id}`,
+          image: `https://image.tmdb.org/t/p/w500${actor.profile_path}`,
+        };
 
-      // Check if the actor is already in the list
-      const isDuplicate = customActors.some(
-        (customActor) => customActor.name === actorData.name
-      );
+        let customActors =
+          JSON.parse(window.localStorage.getItem("customActors")) || [];
 
-      if (!isDuplicate) {
-        customActors.push(actorData);
-        console.log("customActors", customActors);
-        window.localStorage.setItem(
-          "customActors",
-          JSON.stringify(customActors)
+        // Check if the actor is already in the list
+        const isDuplicate = customActors.some(
+          (customActor) => customActor.name === actorData.name
         );
+
+        if (!isDuplicate) {
+          customActors.push(actorData);
+          console.log("customActors", customActors);
+          window.localStorage.setItem(
+            "customActors",
+            JSON.stringify(customActors)
+          );
+        }
+      } else {
+        success = false;
       }
-      return true;
-    } else {
-      return false;
+    } catch (error) {
+      console.error("Error searching TMDb:", error);
+      success = false;
     }
-  } catch (error) {
-    console.error("Error searching TMDb:", error);
-    return false;
   }
+  return success;
 }
 
 function getList(key) {
