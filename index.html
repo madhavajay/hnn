@@ -69,11 +69,63 @@
   </style>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script>
+    // Add this function to search IMDB and store the result in local storage
+    async function searchAndStoreIMDB(name) {
+      console.log("search name", name)
+    const apiKey = "010de1bcf60f0e14b92765a3f9485662"; // Replace this with your actual API key
+    const searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(name)}`;
+
+    try {
+      const response = await fetch(searchUrl);
+      const data = await response.json();
+      console.log("got data", data)
+      if (data && data.results && data.results.length > 0) {
+        const actor = data.results[0];
+        console.log("got results", actor)
+        const actorData = {
+          name: actor.name,
+          link: `https://www.themoviedb.org/person/${actor.id}`,
+          image: `https://image.tmdb.org/t/p/w500${actor.profile_path}`,
+        };
+
+        let customActors = JSON.parse(window.localStorage.getItem("customActors")) || [];
+        customActors.push(actorData);
+        console.log("customActors", customActors)
+        window.localStorage.setItem("customActors", JSON.stringify(customActors));
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error("Error searching TMDb:", error);
+      return false;
+    }
+  }
+  
     actors = []
     $(document).ready(function () {
+        // Add this event listener for the "Add" button
+      $("#addCustomName").click(async function () {
+        const name = $("#customName").val();
+        console.log("got name", name)
+        if (name) {
+          const success = await searchAndStoreIMDB(name);
+          if (success) {
+            alert("Custom name added successfully!");
+            $("#customName").val("");
+          } else {
+            alert("No results found. Please try a different name.");
+          }
+        } else {
+          alert("Please enter a name.");
+        }
+      });
+
       $.getJSON("actors.json", function (actor_json) {
         try {
           actors = actor_json
+          let customActors = JSON.parse(window.localStorage.getItem("customActors")) || [];
+          actors = actors.concat(customActors);
           updateScores()
           showRandomActor(actors)
         }
@@ -87,6 +139,8 @@
       })
 
       $("#next").click(function (e) {
+        let customActors = JSON.parse(window.localStorage.getItem("customActors")) || [];
+        actors = actors.concat(customActors);
         showRandomActor(actors)
       })
     })
@@ -268,5 +322,9 @@
         class="button"
       />
     </div>
+  </div>
+  <div style="width: 100%; text-align: center; margin-bottom: 15px;">
+    <input id="customName" type="text" placeholder="Enter custom name" style="font-size: 24px;"/>
+    <input id="addCustomName" type="button" value="Add" style="font-size: 24px;"/>
   </div>
 </html>
