@@ -1,5 +1,3 @@
-actors = [];
-
 // Add this function to search IMDB and store the result in local storage
 async function searchAndStoreIMDB(name) {
   console.log("search name", name);
@@ -121,65 +119,105 @@ function showNext() {
   $("#next_container").show();
 }
 
-function getRandomActor(actors) {
-  const size = actors.length;
-  random_actor = Math.floor(Math.random() * size);
-  actor = actors[random_actor];
-  return actor;
+async function getRandomActor() {
+  return getAllActors().then((actors) => {
+    const size = actors.length;
+    const random_actor = Math.floor(Math.random() * size);
+    return actors[random_actor];
+  });
 }
 
-function showRandomActor(actors) {
-  $("#next_container").hide();
-  var answered = getAnswered();
+function getAllActors() {
+  return new Promise((resolve) => {
+    const localActors =
+      JSON.parse(window.localStorage.getItem("customActors")) || [];
+    const allActorsSet = new Set(localActors);
 
-  if (answered.size >= actors.length) {
-    resetAnswered();
-    answered = getAnswered();
-  }
+    $.getJSON("actors.json", function (actor_json) {
+      try {
+        // Combine actors from the JSON file with local storage actors
+        actor_json.forEach((actor) => {
+          if (!allActorsSet.has(actor)) {
+            allActorsSet.add(actor);
+          }
+        });
 
-  chosen_actors = new Set();
+        // Convert the Set back to an array and resolve the promise
+        resolve(Array.from(allActorsSet));
+      } catch (err) {
+        console.log("got error", err);
+        resolve(localActors);
+      }
+    });
+  });
+}
 
-  var correct_actor = getRandomActor(actors);
-  while (answered.has(correct_actor.name)) {
-    correct_actor = getRandomActor(actors);
-  }
+async function showRandomActor() {
+  console.log("do nothing");
+  getAllActors().then(async (actors) => {
+    $("#next_container").hide();
+    var answered = getAnswered();
 
-  $("#correct_name_link").attr("href", correct_actor.link);
-  $("#correct_name_link").html(correct_actor.name);
-  $("#correct_name_link").hide();
-  button_ids = [1, 2, 3, 4];
-  // reset correct attr
-  for (const button_id of button_ids) {
-    $("#option" + button_id).attr("correct", "0");
-    $("#option" + button_id).removeClass("correct");
-    $("#option" + button_id).removeClass("incorrect");
-    $("#option" + button_id).removeClass("reveal");
-  }
-
-  random_button = Math.floor(Math.random() * 4);
-  correct_button = button_ids[random_button];
-  button_ids.splice(random_button, 1);
-  $("#option" + correct_button).attr("value", correct_actor.name);
-  $("#option" + correct_button).attr("correct", "1");
-
-  while (chosen_actors.size < 3) {
-    var button_actor = getRandomActor(actors);
-    if (
-      !chosen_actors.has(button_actor.name) &&
-      button_actor.name != correct_actor.name
-    ) {
-      chosen_actors.add(button_actor.name);
+    if (answered.size >= actors.length) {
+      resetAnswered();
+      answered = getAnswered();
     }
-  }
 
-  const actor_array = Array.from(chosen_actors.values());
-  for (const button_id of button_ids) {
-    const index = button_id - 1;
-    const actor_name = actor_array.pop();
-    $("#option" + button_id).attr("value", actor_name);
-  }
+    chosen_actors = new Set();
 
-  $("#image").attr("src", correct_actor.image);
+    var correct_actor = await getRandomActor();
+    while (answered.has(correct_actor.name)) {
+      correct_actor = await getRandomActor();
+    }
+
+    $("#correct_name_link").attr("href", correct_actor.link);
+    $("#correct_name_link").html(correct_actor.name);
+    $("#correct_name_link").hide();
+    button_ids = [1, 2, 3, 4];
+    // reset correct attr
+    for (const button_id of button_ids) {
+      $("#option" + button_id).attr("correct", "0");
+      $("#option" + button_id).removeClass("correct");
+      $("#option" + button_id).removeClass("incorrect");
+      $("#option" + button_id).removeClass("reveal");
+    }
+
+    random_button = Math.floor(Math.random() * 4);
+    correct_button = button_ids[random_button];
+    button_ids.splice(random_button, 1);
+    $("#option" + correct_button).attr("value", correct_actor.name);
+    $("#option" + correct_button).attr("correct", "1");
+    while (chosen_actors.size < 3) {
+      var button_actor = await getRandomActor();
+      if (
+        !chosen_actors.has(button_actor.name) &&
+        button_actor.name != correct_actor.name
+      ) {
+        chosen_actors.add(button_actor.name);
+      }
+    }
+
+    const actor_array = Array.from(chosen_actors.values());
+    for (const button_id of button_ids) {
+      const index = button_id - 1;
+      const actor_name = actor_array.pop();
+      $("#option" + button_id).attr("value", actor_name);
+    }
+
+    $("#image").attr("src", correct_actor.image);
+  });
+}
+
+function displayNextButton() {
+  $("#next_container").css("display", "flex");
+}
+
+function disableButtons() {
+  $(".button").prop("disabled", true);
+}
+
+function enableButtons() {
+  $(".button").prop("disabled", false);
 }
 
 $(document).ready(function () {
@@ -199,28 +237,17 @@ $(document).ready(function () {
     }
   });
 
-  $.getJSON("actors.json", function (actor_json) {
-    try {
-      actors = actor_json;
-      let customActors =
-        JSON.parse(window.localStorage.getItem("customActors")) || [];
-      actors = actors.concat(customActors);
-      updateScores();
-      showRandomActor(actors);
-    } catch (err) {
-      console.log("got error", err);
-    }
-  });
-
   $(".button").click(function (e) {
+    disableButtons();
     var clicked_id = $(this).attr("rel");
     checkAnswer(clicked_id);
   });
 
   $("#next").click(function (e) {
-    let customActors =
-      JSON.parse(window.localStorage.getItem("customActors")) || [];
-    actors = actors.concat(customActors);
-    showRandomActor(actors);
+    enableButtons();
+    showRandomActor();
   });
+
+  updateScores();
+  showRandomActor();
 });
